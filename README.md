@@ -30,8 +30,13 @@ Hand-built static site — no frameworks, no build step.
 
 ## Deployment
 
-Deployed automatically to **GitHub Pages** via GitHub Actions
-(`.github/workflows/deploy.yml`) on every push.
+Every push runs a GitHub Actions workflow (`.github/workflows/deploy.yml`)
+that publishes the site to the `gh-pages` branch.
+
+**One-time setup** (repo admin, ~10 seconds): go to
+**Settings → Pages → Build and deployment**, set **Source** to
+*Deploy from a branch*, pick **`gh-pages`** / **`/ (root)`**, and save.
+After that, every push deploys automatically.
 
 Live site: https://dominopizzaaaa.github.io/the-common-athlete-website/
 
