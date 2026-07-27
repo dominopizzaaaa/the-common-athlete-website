@@ -1,105 +1,108 @@
 /* ==========================================================================
    The Common Athlete — The Fitting Room
-   On-device virtual try-on. A pose model finds the body's landmarks, then each
-   garment cut-out is placed with a similarity transform (rotate + uniform
-   scale) anchored to a pair of landmarks — the same idea as an eyewear try-on,
-   applied to shoulders, hips and ears. No photo ever leaves the device.
+
+   Avatar mode (default): a body is generated from the visitor's own
+   measurements, so every anatomical station is known exactly and garments are
+   placed against real centimetres. Garment lengths come from the graded spec
+   pack, which is why the same size reads shorter on a taller body.
+
+   Photo mode: the same collection fitted to an uploaded photo using pose
+   landmarks. Nothing is uploaded in either mode — it all runs on the device.
    ========================================================================== */
 
-const MP_WASM  = "vendor/mediapipe/wasm";
+import {
+  buildBody, drawBody, drawArms, drawBackdrop, garmentBox, recommendSize,
+  SIZE_KEYS,
+} from "./avatar.js";
+
+const MP_WASM   = "vendor/mediapipe/wasm";
 const MP_MODULE = "vendor/mediapipe/vision_bundle.js";
-const MP_MODEL = "assets/models/pose_landmarker_lite.task";
+const MP_MODEL  = "assets/models/pose_landmarker_lite.task";
 
-/* Pose landmark indices (MediaPipe Pose, 33 points).
-   Pairs are ordered [image-left, image-right] for a person facing the camera:
-   the subject's right side appears on the viewer's left. */
-const PAIRS = {
-  shoulders: [12, 11],
-  hips:      [24, 23],
-  ears:      [8, 7],
-};
+const AVATAR_W = 720;
+const AVATAR_H = 1160;
+const MAX_EDGE = 1600;
+const MIN_VIS  = 0.4;
 
-/* Placement is expressed relative to the body, so it scales with the person
-   automatically:
-     widthFactor  — garment width ÷ distance between the two anchor landmarks
-     heightFactor — garment height ÷ torso length (shoulders→hips). Optional;
-                    without it the garment scales uniformly. Flat product
-                    renders are proportionally taller than the span a garment
-                    actually covers on a body — straps and waistbands are laid
-                    out at full length rather than curving over the shoulder or
-                    hip — so the clothing pieces are fitted on both axes.
-     anchorY      — where the landmark line sits down the garment image (0–1)
-     offsetPerp   — shift perpendicular to the landmark line (+ = down the body)
-     offsetAlong  — shift along the landmark line (+ = toward image right)
-   Values are calibrated against a reference figure with known anthropometry
-   (see the fit-measure harness). */
+/* Pose landmark pairs, ordered [image-left, image-right] for someone facing
+   the camera: their right side appears on the viewer's left. */
+const PAIRS = { shoulders: [12, 11], hips: [24, 23], ears: [8, 7] };
+
 const GARMENTS = [
   { id: "headband", name: "Studio Headband", short: "Headband",
-    slot: "head", price: 14, z: 3,
+    slot: "head", price: 14, z: 3, sizedBy: "one",
     anchor: "ears", widthFactor: 1.08, anchorY: 0.50, offsetPerp: -0.35, offsetAlong: 0 },
 
   { id: "cross-back-bra", name: "Featherweight Cross-Back Bralette", short: "Cross-Back Bralette",
-    slot: "top", price: 34, z: 2,
+    slot: "top", price: 34, z: 2, sizedBy: "top",
     anchor: "shoulders", widthFactor: 0.90, heightFactor: 0.327,
     anchorY: 0.02, offsetPerp: 0, offsetAlong: 0 },
 
   { id: "halter", name: "Studio Halter Longline Crop", short: "Halter Crop",
-    slot: "top", price: 42, z: 2,
+    slot: "top", price: 42, z: 2, sizedBy: "top",
     anchor: "shoulders", widthFactor: 1.06, heightFactor: 0.816,
     anchorY: 0.20, offsetPerp: 0, offsetAlong: 0 },
 
   { id: "sculpt-short", name: "Sculpt V-Waist Short", short: "Sculpt Short",
-    slot: "bottom", price: 40, z: 1,
+    slot: "bottom", price: 40, z: 1, sizedBy: "bottom",
     anchor: "hips", widthFactor: 2.19, heightFactor: 0.712,
     anchorY: 0.487, offsetPerp: 0, offsetAlong: 0 },
 
   { id: "tempo-short", name: "Tempo 2-in-1 Running Short", short: "Tempo Short",
-    slot: "bottom", price: 48, z: 1,
+    slot: "bottom", price: 48, z: 1, sizedBy: "bottom",
     anchor: "hips", widthFactor: 2.48, heightFactor: 0.690,
     anchorY: 0.463, offsetPerp: 0, offsetAlong: 0 },
 ];
 
 const COLOURS = { black: "Black", sand: "Sand", espresso: "Espresso" };
-const MAX_EDGE = 1600;
-const MIN_VIS = 0.4;
+
+const DEFAULTS = { height: 162, bust: 88, waist: 69, hip: 94 };
 
 /* ---------------------------------------------------------------- state --- */
 const state = {
+  mode: "avatar",
   colour: "black",
-  worn: { head: null, top: null, bottom: null },
-  adjust: {},                 // per garment id: { scale, perp, along }
-  active: null,               // garment id the sliders act on
+  tone: "warm",
+  measure: { ...DEFAULTS },
+  worn: { head: null, top: "cross-back-bra", bottom: "sculpt-short" },
+  adjust: {},
+  active: "cross-back-bra",
   landmarks: null,
-  photo: null,                // canvas holding the (oriented, downscaled) photo
+  photo: null,
   allowBottom: true,
+  body: null,
+  sizes: null,
 };
 
 const els = {};
 const imgCache = new Map();
 let landmarker = null;
 
-/* ------------------------------------------------------------- elements --- */
+/* ------------------------------------------------------------- helpers --- */
 function cacheEls() {
   [
     "stageIntro", "stageLoading", "stageError", "stageStudio",
     "dropZone", "fileInput", "chooseBtn", "loadingMsg", "errorTitle", "errorMsg",
-    "retryBtn", "stage", "canvasWrap", "changePhotoBtn", "saveBtn", "stageNote",
+    "retryBtn", "stage", "canvasWrap", "saveBtn", "stageNote", "modeBack",
     "colourRow", "tray", "adjustBlock", "adjustTarget", "resetAdjust",
     "scaleRange", "offsetRange", "shiftRange", "lookSummary",
+    "avatarBlock", "toneRow", "sizeOut", "startAvatar", "photoBlock",
   ].forEach((id) => (els[id] = document.getElementById(id)));
+
+  ["height", "bust", "waist", "hip"].forEach((k) => {
+    els[`m_${k}`] = document.getElementById(`m_${k}`);
+    els[`v_${k}`] = document.getElementById(`v_${k}`);
+  });
 }
 
 function showStage(name) {
   ["stageIntro", "stageLoading", "stageError", "stageStudio"].forEach((s) => {
-    els[s].hidden = s !== name;
+    if (els[s]) els[s].hidden = s !== name;
   });
   if (name !== "stageStudio") window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-/* --------------------------------------------------------------- assets --- */
-function garmentSrc(id, colour) {
-  return `assets/garments/${id}-${colour}.png`;
-}
+const garmentSrc = (id, colour) => `assets/garments/${id}-${colour}.png`;
 
 function loadImage(src) {
   if (imgCache.has(src)) return imgCache.get(src);
@@ -114,21 +117,129 @@ function loadImage(src) {
   return p;
 }
 
-/* Warm the cache for a colourway so swapping feels instant. */
 function prefetchColour(colour) {
   GARMENTS.forEach((g) => loadImage(garmentSrc(g.id, colour)).catch(() => {}));
 }
 
-/* ------------------------------------------------------------ pose init --- */
+/* ----------------------------------------------------------- rendering --- */
+function sizeIndexFor(g) {
+  if (!state.sizes) return 2;
+  if (g.sizedBy === "top") return state.sizes.topIndex;
+  if (g.sizedBy === "bottom") return state.sizes.bottomIndex;
+  return 2;
+}
+
+function activeGarments() {
+  return GARMENTS
+    .filter((g) => state.worn[g.slot] === g.id)
+    .sort((a, b) => a.z - b.z);
+}
+
+async function renderAvatar() {
+  const cv = els.stage;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = AVATAR_W * dpr;
+  cv.height = AVATAR_H * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, AVATAR_W, AVATAR_H);
+  drawBackdrop(ctx, AVATAR_W, AVATAR_H);
+
+  const B = buildBody(state.measure, AVATAR_W, AVATAR_H);
+  state.body = B;
+
+  drawBody(ctx, B, state.tone);
+
+  for (const g of activeGarments()) {
+    let img;
+    try { img = await loadImage(garmentSrc(g.id, state.colour)); } catch (e) { continue; }
+    const box = garmentBox(g.id, B, sizeIndexFor(g));
+    if (!box) continue;
+
+    if (box.uniform) {
+      const s = box.imgW / img.naturalWidth;
+      const h = img.naturalHeight * s;
+      ctx.drawImage(img, box.cx - box.imgW / 2, box.cy - h / 2, box.imgW, h);
+    } else {
+      ctx.drawImage(img, box.cx - box.imgW / 2, box.top, box.imgW, box.bottom - box.top);
+    }
+  }
+
+  drawArms(ctx, B, state.tone);
+}
+
+/* ---- photo mode ---- */
+function torsoLength(lm, W, H) {
+  const sx = (lm[11].x + lm[12].x) / 2 * W, sy = (lm[11].y + lm[12].y) / 2 * H;
+  const hx = (lm[23].x + lm[24].x) / 2 * W, hy = (lm[23].y + lm[24].y) / 2 * H;
+  return Math.hypot(hx - sx, hy - sy);
+}
+
+function placement(g, lm, W, H) {
+  const [ia, ib] = PAIRS[g.anchor];
+  const ax = lm[ia].x * W, ay = lm[ia].y * H;
+  const bx = lm[ib].x * W, by = lm[ib].y * H;
+  const dx = bx - ax, dy = by - ay;
+  const dist = Math.hypot(dx, dy);
+  if (!dist) return null;
+
+  const angle = Math.atan2(dy, dx);
+  const ux = Math.cos(angle), uy = Math.sin(angle);
+  const vx = -uy, vy = ux;
+
+  const adj = state.adjust[g.id] || { scale: 1, perp: 0, along: 0 };
+  const targetW = dist * g.widthFactor * adj.scale;
+
+  let targetH = null;
+  if (g.heightFactor) {
+    const torso = torsoLength(lm, W, H);
+    if (torso > 0) targetH = torso * g.heightFactor * adj.scale;
+  }
+
+  const perp = (g.offsetPerp + adj.perp) * dist;
+  const along = (g.offsetAlong + adj.along) * dist;
+  return {
+    angle, targetW, targetH, anchorY: g.anchorY,
+    cx: (ax + bx) / 2 + ux * along + vx * perp,
+    cy: (ay + by) / 2 + uy * along + vy * perp,
+  };
+}
+
+async function renderPhoto() {
+  const photo = state.photo;
+  if (!photo) return;
+  const cv = els.stage;
+  cv.width = photo.width;
+  cv.height = photo.height;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(photo, 0, 0);
+
+  for (const g of activeGarments()) {
+    let img;
+    try { img = await loadImage(garmentSrc(g.id, state.colour)); } catch (e) { continue; }
+    const p = placement(g, state.landmarks, cv.width, cv.height);
+    if (!p) continue;
+    const sx = p.targetW / img.naturalWidth;
+    const sy = p.targetH ? p.targetH / img.naturalHeight : sx;
+    ctx.save();
+    ctx.translate(p.cx, p.cy);
+    ctx.rotate(p.angle);
+    ctx.scale(sx, sy);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight * p.anchorY);
+    ctx.restore();
+  }
+}
+
+const render = () => (state.mode === "avatar" ? renderAvatar() : renderPhoto());
+
+/* ---------------------------------------------------------- photo flow --- */
 async function getLandmarker(onProgress) {
   if (landmarker) return landmarker;
-
   onProgress("Loading the fitting engine…");
-  const vision = await import(`./../${MP_MODULE}`);
-  const { FilesetResolver, PoseLandmarker } = vision;
-
+  const { FilesetResolver, PoseLandmarker } = await import(`./../${MP_MODULE}`);
   const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
-
   onProgress("Warming up…");
   const opts = (delegate) => ({
     baseOptions: { modelAssetPath: MP_MODEL, delegate },
@@ -137,44 +248,41 @@ async function getLandmarker(onProgress) {
     minPoseDetectionConfidence: 0.4,
     minPosePresenceConfidence: 0.4,
   });
-
   try {
     landmarker = await PoseLandmarker.createFromOptions(fileset, opts("GPU"));
   } catch (e) {
-    // Some mobile GPUs refuse the delegate — CPU is slower but universal.
     landmarker = await PoseLandmarker.createFromOptions(fileset, opts("CPU"));
   }
   return landmarker;
 }
 
-/* ---------------------------------------------------------------- photo --- */
 async function decodePhoto(file) {
-  // Decode with EXIF orientation applied so what we show matches what the
-  // model sees, then downscale for predictable memory use on phones.
   let bitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch (e) {
     bitmap = await createImageBitmap(file);
   }
-
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
   const h = Math.round(bitmap.height * scale);
-
   const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
+  c.width = w; c.height = h;
   c.getContext("2d").drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
   return c;
+}
+
+function fail(title, msg) {
+  els.errorTitle.textContent = title;
+  els.errorMsg.textContent = msg;
+  showStage("stageError");
 }
 
 async function handleFile(file) {
   if (!file || !file.type.startsWith("image/")) {
     return fail("That file isn't an image", "Please choose a photo — JPEG, PNG or HEIC all work.");
   }
-
   showStage("stageLoading");
   const progress = (m) => (els.loadingMsg.textContent = m);
   progress("Reading your photo…");
@@ -182,14 +290,14 @@ async function handleFile(file) {
   try {
     state.photo = await decodePhoto(file);
   } catch (e) {
-    return fail("We couldn't open that photo", "The file may be corrupted or in a format your browser can't read. Try another one.");
+    return fail("We couldn't open that photo", "The file may be in a format your browser can't read. Try another one.");
   }
 
   let detector;
   try {
     detector = await getLandmarker(progress);
   } catch (e) {
-    return fail("The fitting engine didn't load", "Check your connection and try again — it needs a one-time download of about 15 MB.");
+    return fail("The fitting engine didn't load", "Check your connection and try again — it needs a one-time download.");
   }
 
   progress("Finding your fit…");
@@ -203,41 +311,44 @@ async function handleFile(file) {
   const lm = result?.landmarks?.[0];
   if (!lm) {
     return fail("We couldn't quite see you",
-      "No body was detected. Try a photo taken from the front, showing your head and shoulders, in good light.");
+      "No body was detected. Try a photo from the front, showing your head and shoulders, in good light.");
   }
-
   const vis = (i) => (lm[i].visibility ?? 1);
-  const shouldersOK = vis(11) > MIN_VIS && vis(12) > MIN_VIS;
-  if (!shouldersOK) {
+  if (!(vis(11) > MIN_VIS && vis(12) > MIN_VIS)) {
     return fail("We couldn't find your shoulders",
       "Try standing square to the camera with both shoulders in frame and arms relaxed by your sides.");
   }
 
+  state.mode = "photo";
   state.landmarks = lm;
   state.allowBottom = vis(23) > MIN_VIS && vis(24) > MIN_VIS;
-
-  // Sensible opening look, limited to what the photo actually shows.
-  state.worn = { head: null, top: "cross-back-bra", bottom: state.allowBottom ? "sculpt-short" : null };
+  if (!state.allowBottom) state.worn.bottom = null;
   state.adjust = {};
-  state.active = "cross-back-bra";
 
-  prefetchColour(state.colour);
+  enterStudio();
+}
+
+/* ------------------------------------------------------------- studio --- */
+function enterStudio() {
   buildTray();
   showStage("stageStudio");
-  await render();
+  els.avatarBlock.hidden = state.mode !== "avatar";
+  els.adjustBlock.hidden = true;
+  els.canvasWrap.classList.toggle("is-avatar", state.mode === "avatar");
+  els.modeBack.textContent = state.mode === "avatar" ? "Use my own photo instead" : "Back to the avatar";
+  render();
   syncPanel();
-
   els.stageNote.textContent = stageNote();
 }
 
-/* A photo taken side-on gives a short shoulder line, so garments come out
-   narrow. That's geometrically faithful but rarely what someone wants to see. */
 function stageNote() {
+  if (state.mode === "avatar") {
+    return "Set your measurements below — the fit updates as you go.";
+  }
   if (!state.allowBottom) {
     return "We can only see your upper body here, so shorts are unavailable — upload a fuller shot to try them on.";
   }
-  const W = state.photo.width, H = state.photo.height;
-  const lm = state.landmarks;
+  const W = state.photo.width, H = state.photo.height, lm = state.landmarks;
   const shoulders = Math.hypot((lm[11].x - lm[12].x) * W, (lm[11].y - lm[12].y) * H);
   const torso = torsoLength(lm, W, H);
   if (torso > 0 && shoulders / torso < 0.5) {
@@ -246,96 +357,6 @@ function stageNote() {
   return "Not quite right? Use Adjust to nudge the size and position.";
 }
 
-function fail(title, msg) {
-  els.errorTitle.textContent = title;
-  els.errorMsg.textContent = msg;
-  showStage("stageError");
-}
-
-/* --------------------------------------------------------------- layout --- */
-/* Torso length (shoulder midpoint → hip midpoint) is the vertical yardstick.
-   Hip landmarks are used even when barely visible: the model extrapolates them
-   sensibly, and only *wearing shorts* is gated on real visibility. */
-function torsoLength(lm, W, H) {
-  const sx = (lm[11].x + lm[12].x) / 2 * W, sy = (lm[11].y + lm[12].y) / 2 * H;
-  const hx = (lm[23].x + lm[24].x) / 2 * W, hy = (lm[23].y + lm[24].y) / 2 * H;
-  return Math.hypot(hx - sx, hy - sy);
-}
-
-/* Map the garment's anchor onto the landmark pair: rotate to the body's angle,
-   scale horizontally to body width and vertically to torso length. */
-function placement(g, lm, W, H) {
-  const [ia, ib] = PAIRS[g.anchor];
-  const ax = lm[ia].x * W, ay = lm[ia].y * H;
-  const bx = lm[ib].x * W, by = lm[ib].y * H;
-
-  const dx = bx - ax, dy = by - ay;
-  const dist = Math.hypot(dx, dy);
-  if (!dist) return null;
-
-  const angle = Math.atan2(dy, dx);
-  const ux = Math.cos(angle), uy = Math.sin(angle);   // along the landmark line
-  const vx = -uy, vy = ux;                            // perpendicular, down the body
-
-  const adj = state.adjust[g.id] || { scale: 1, perp: 0, along: 0 };
-  const targetW = dist * g.widthFactor * adj.scale;
-
-  let targetH = null;
-  if (g.heightFactor) {
-    const torso = torsoLength(lm, W, H);
-    if (torso > 0) targetH = torso * g.heightFactor * adj.scale;
-  }
-
-  const perp = (g.offsetPerp + adj.perp) * dist;
-  const along = (g.offsetAlong + adj.along) * dist;
-
-  return {
-    angle,
-    targetW,
-    targetH,
-    cx: (ax + bx) / 2 + ux * along + vx * perp,
-    cy: (ay + by) / 2 + uy * along + vy * perp,
-    anchorY: g.anchorY,
-  };
-}
-
-async function render() {
-  const photo = state.photo;
-  if (!photo) return;
-
-  const cv = els.stage;
-  cv.width = photo.width;
-  cv.height = photo.height;
-  const ctx = cv.getContext("2d");
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.drawImage(photo, 0, 0);
-
-  const active = GARMENTS
-    .filter((g) => state.worn[g.slot] === g.id)
-    .sort((a, b) => a.z - b.z);
-
-  for (const g of active) {
-    let img;
-    try {
-      img = await loadImage(garmentSrc(g.id, state.colour));
-    } catch (e) {
-      continue;
-    }
-    const p = placement(g, state.landmarks, cv.width, cv.height);
-    if (!p) continue;
-
-    const sx = p.targetW / img.naturalWidth;
-    const sy = p.targetH ? p.targetH / img.naturalHeight : sx;
-    ctx.save();
-    ctx.translate(p.cx, p.cy);
-    ctx.rotate(p.angle);
-    ctx.scale(sx, sy);
-    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight * p.anchorY);
-    ctx.restore();
-  }
-}
-
-/* ------------------------------------------------------------------- UI --- */
 function buildTray() {
   els.tray.innerHTML = "";
   GARMENTS.forEach((g) => {
@@ -354,8 +375,7 @@ function buildTray() {
 }
 
 function toggleGarment(g) {
-  if (g.slot === "bottom" && !state.allowBottom) return;
-
+  if (g.slot === "bottom" && state.mode === "photo" && !state.allowBottom) return;
   if (state.worn[g.slot] === g.id) {
     state.worn[g.slot] = null;
     if (state.active === g.id) state.active = null;
@@ -371,7 +391,7 @@ function syncTray() {
   els.tray.querySelectorAll(".tray__item").forEach((btn) => {
     const g = GARMENTS.find((x) => x.id === btn.dataset.id);
     const on = state.worn[g.slot] === g.id;
-    const locked = g.slot === "bottom" && !state.allowBottom;
+    const locked = g.slot === "bottom" && state.mode === "photo" && !state.allowBottom;
     btn.classList.toggle("is-on", on);
     btn.classList.toggle("is-active", state.active === g.id);
     btn.classList.toggle("is-locked", locked);
@@ -384,10 +404,11 @@ function syncTray() {
 function syncPanel() {
   syncTray();
 
+  // adjust sliders are a photo-mode affordance; the avatar is exact by design
   const g = GARMENTS.find((x) => x.id === state.active);
   const wearing = g && state.worn[g.slot] === g.id;
-  els.adjustBlock.hidden = !wearing;
-  if (wearing) {
+  els.adjustBlock.hidden = state.mode !== "photo" || !wearing;
+  if (!els.adjustBlock.hidden) {
     els.adjustTarget.textContent = g.short.toLowerCase();
     const adj = state.adjust[g.id] || { scale: 1, perp: 0, along: 0 };
     els.scaleRange.value = Math.round(adj.scale * 100);
@@ -395,21 +416,42 @@ function syncPanel() {
     els.shiftRange.value = Math.round(adj.along * 200);
   }
 
-  const items = GARMENTS.filter((x) => state.worn[x.slot] === x.id);
+  const items = activeGarments();
   if (!items.length) {
     els.lookSummary.innerHTML = `<p class="look-summary__empty">Nothing on — tap a piece above to start building your look.</p>`;
     return;
   }
   const total = items.reduce((s, x) => s + x.price, 0);
+  const sizeOf = (x) => {
+    if (state.mode !== "avatar") return "";
+    if (x.sizedBy === "one") return " · One size";
+    return ` · ${SIZE_KEYS[sizeIndexFor(x)]}`;
+  };
   els.lookSummary.innerHTML = `
     <p class="look-summary__title">Your look — ${COLOURS[state.colour]}</p>
-    <ul>${items.map((x) => `<li><span>${x.name}</span><span>S$${x.price}</span></li>`).join("")}</ul>
+    <ul>${items.map((x) =>
+      `<li><span>${x.name}<em>${sizeOf(x)}</em></span><span>S$${x.price}</span></li>`).join("")}</ul>
     <p class="look-summary__total"><span>Total</span><span>S$${total}</span></p>`;
 }
 
-function ensureAdjust(id) {
-  if (!state.adjust[id]) state.adjust[id] = { scale: 1, perp: 0, along: 0 };
-  return state.adjust[id];
+/* --------------------------------------------------------- measurements --- */
+function syncMeasureUI() {
+  ["height", "bust", "waist", "hip"].forEach((k) => {
+    els[`m_${k}`].value = state.measure[k];
+    els[`v_${k}`].textContent = `${state.measure[k]} cm`;
+  });
+  state.sizes = recommendSize(state.measure);
+  const s = state.sizes;
+  els.sizeOut.innerHTML = s.top === s.bottom
+    ? `<strong>${s.top}</strong><span>your size across the collection</span>`
+    : `<strong>${s.top} top · ${s.bottom} bottom</strong><span>your best fit in each</span>`;
+}
+
+function onMeasureInput(k, v) {
+  state.measure[k] = Number(v);
+  syncMeasureUI();
+  render();
+  syncPanel();
 }
 
 /* ---------------------------------------------------------------- save --- */
@@ -417,7 +459,6 @@ async function saveLook() {
   const blob = await new Promise((res) => els.stage.toBlob(res, "image/jpeg", 0.92));
   if (!blob) return;
   const file = new File([blob], "the-common-athlete-look.jpg", { type: "image/jpeg" });
-
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: "My Common Athlete look" });
@@ -426,7 +467,6 @@ async function saveLook() {
       if (e.name === "AbortError") return;
     }
   }
-
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -439,13 +479,23 @@ async function saveLook() {
 
 /* ---------------------------------------------------------------- wire --- */
 function wire() {
-  const pick = () => els.fileInput.click();
-  els.chooseBtn.addEventListener("click", pick);
-  els.dropZone.addEventListener("click", (e) => {
-    if (e.target !== els.chooseBtn) pick();
+  els.startAvatar.addEventListener("click", () => {
+    state.mode = "avatar";
+    prefetchColour(state.colour);
+    enterStudio();
   });
-  els.changePhotoBtn.addEventListener("click", pick);
+
+  const pick = () => els.fileInput.click();
+  els.chooseBtn.addEventListener("click", (e) => { e.stopPropagation(); pick(); });
+  els.dropZone.addEventListener("click", (e) => { if (e.target !== els.chooseBtn) pick(); });
   els.retryBtn.addEventListener("click", pick);
+
+  els.modeBack.addEventListener("click", () => {
+    if (state.mode === "avatar") { pick(); return; }
+    state.mode = "avatar";
+    state.worn.bottom = state.worn.bottom || "sculpt-short";
+    enterStudio();
+  });
 
   els.fileInput.addEventListener("change", (e) => {
     const f = e.target.files?.[0];
@@ -454,15 +504,9 @@ function wire() {
   });
 
   ["dragenter", "dragover"].forEach((ev) =>
-    els.dropZone.addEventListener(ev, (e) => {
-      e.preventDefault();
-      els.dropZone.classList.add("is-over");
-    }));
+    els.dropZone.addEventListener(ev, (e) => { e.preventDefault(); els.dropZone.classList.add("is-over"); }));
   ["dragleave", "drop"].forEach((ev) =>
-    els.dropZone.addEventListener(ev, (e) => {
-      e.preventDefault();
-      els.dropZone.classList.remove("is-over");
-    }));
+    els.dropZone.addEventListener(ev, (e) => { e.preventDefault(); els.dropZone.classList.remove("is-over"); }));
   els.dropZone.addEventListener("drop", (e) => {
     const f = e.dataTransfer?.files?.[0];
     if (f) handleFile(f);
@@ -479,10 +523,24 @@ function wire() {
     syncPanel();
   });
 
+  els.toneRow.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-tone]");
+    if (!btn) return;
+    state.tone = btn.dataset.tone;
+    els.toneRow.querySelectorAll(".tone-dot")
+      .forEach((b) => b.classList.toggle("is-active", b === btn));
+    render();
+  });
+
+  ["height", "bust", "waist", "hip"].forEach((k) => {
+    els[`m_${k}`].addEventListener("input", (e) => onMeasureInput(k, e.target.value));
+  });
+
   const onSlider = (el, key, div) =>
     el.addEventListener("input", () => {
       if (!state.active) return;
-      ensureAdjust(state.active)[key] = Number(el.value) / div;
+      if (!state.adjust[state.active]) state.adjust[state.active] = { scale: 1, perp: 0, along: 0 };
+      state.adjust[state.active][key] = Number(el.value) / div;
       render();
     });
   onSlider(els.scaleRange, "scale", 100);
@@ -498,12 +556,10 @@ function wire() {
 
   els.saveBtn.addEventListener("click", saveLook);
 
-  // Swipe across the canvas to cycle the top, since that's the piece people
-  // compare most. Horizontal intent only, so vertical scrolling still works.
+  // swipe across the figure to cycle tops
   let sx = 0, sy = 0;
   els.canvasWrap.addEventListener("touchstart", (e) => {
-    sx = e.touches[0].clientX;
-    sy = e.touches[0].clientY;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
   }, { passive: true });
   els.canvasWrap.addEventListener("touchend", (e) => {
     const dx = e.changedTouches[0].clientX - sx;
@@ -514,8 +570,7 @@ function wire() {
 }
 
 function cycleSlot(slot, dir) {
-  const opts = GARMENTS.filter((g) => g.slot === slot).map((g) => g.id);
-  const ring = [null, ...opts];
+  const ring = [null, ...GARMENTS.filter((g) => g.slot === slot).map((g) => g.id)];
   const i = ring.indexOf(state.worn[slot]);
   const next = ring[(i + dir + ring.length) % ring.length];
   state.worn[slot] = next;
@@ -527,6 +582,10 @@ function cycleSlot(slot, dir) {
 /* ---------------------------------------------------------------- init --- */
 cacheEls();
 wire();
+syncMeasureUI();
+prefetchColour(state.colour);
 
-// Test hook — lets the placement maths be verified against known landmarks.
-window.__TCA_TRYON__ = { GARMENTS, PAIRS, placement, state, render, loadImage, garmentSrc };
+window.__TCA_TRYON__ = {
+  GARMENTS, PAIRS, placement, state, render, loadImage, garmentSrc,
+  buildBody, garmentBox, recommendSize, syncMeasureUI, enterStudio, syncPanel,
+};
