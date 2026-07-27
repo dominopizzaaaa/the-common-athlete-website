@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Fitting Room — Virtual Try-On · The Common Athlete</title>
-  <meta name="description" content="Try The Common Athlete on, from wherever you are. Upload a photo and see every style and colourway on you — entirely on your device, never uploaded.">
+  <meta name="description" content="Build a model with your own height, bust, waist and hip, then mix and match every style and colourway on her. Runs entirely on your device.">
   <meta property="og:title" content="The Fitting Room — The Common Athlete">
-  <meta property="og:description" content="See every style and colourway on you. Runs entirely on your device.">
+  <meta property="og:description" content="Build a model with your measurements and see the whole collection on your proportions.">
   <meta property="og:image" content="assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,37 +51,36 @@
         <p class="eyebrow">The Fitting Room</p>
         <h1 class="fit-intro__title">See it on <em>you</em></h1>
         <p class="fit-intro__lede">
-          Upload a photo and try on all five styles in every colourway.
-          Your photo never leaves your phone — everything runs right here
-          in your browser, and nothing is uploaded, stored or sent anywhere.
+          Build a model with your own measurements, then mix and match every
+          style and colourway on her. She's shaped by your height, bust, waist
+          and hip — so you see how each piece actually sits on <em>your</em>
+          proportions, in your size.
         </p>
 
-        <div class="uploader" id="dropZone">
-          <input type="file" id="fileInput" accept="image/*" hidden>
-          <div class="uploader__inner">
-            <div class="uploader__icon" aria-hidden="true">
-              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
-                <path d="M24 33V13m0 0-8 8m8-8 8 8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M8 30v4a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-4" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <p class="uploader__title">Add a photo of yourself</p>
-            <p class="uploader__hint">Tap to choose from your camera roll, or take a new one</p>
-            <button class="btn btn--dark" id="chooseBtn" type="button">Choose a photo</button>
-          </div>
-        </div>
+        <button class="btn btn--dark btn--hero" id="startAvatar" type="button">
+          Start with my measurements
+        </button>
 
         <ul class="fit-tips">
-          <li><span>01</span> Stand facing the camera, arms relaxed by your sides</li>
-          <li><span>02</span> Full body or waist-up both work — just keep shoulders visible</li>
-          <li><span>03</span> Good, even light and a plain background give the cleanest result</li>
+          <li><span>01</span> Set your height and measurements — the model reshapes as you go</li>
+          <li><span>02</span> Tap pieces to wear them, swipe to switch tops</li>
+          <li><span>03</span> We work out your size from the collection's real size chart</li>
         </ul>
+
+        <div class="uploader uploader--alt" id="dropZone">
+          <input type="file" id="fileInput" accept="image/*" hidden>
+          <div class="uploader__inner">
+            <p class="uploader__title">Or try it on your own photo</p>
+            <p class="uploader__hint">Stand facing the camera, arms relaxed by your sides</p>
+            <button class="btn btn--ghost btn--small" id="chooseBtn" type="button">Choose a photo</button>
+          </div>
+        </div>
 
         <p class="fit-privacy">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <path d="M12 3l7 3v5.5c0 4.2-2.9 8.1-7 9.5-4.1-1.4-7-5.3-7-9.5V6l7-3z" stroke-linejoin="round"/>
           </svg>
-          <span><strong>100% private.</strong> Processed entirely on your device — no upload, no server, no storage. Close the tab and it's gone.</span>
+          <span><strong>100% private.</strong> Everything runs on your device — your measurements and any photo stay here, never uploaded or stored.</span>
         </p>
       </div>
     </section>
@@ -115,13 +114,46 @@
             <canvas id="stage"></canvas>
           </div>
           <div class="studio__stage-actions">
-            <button class="chip-btn" id="changePhotoBtn" type="button">Change photo</button>
+            <button class="chip-btn" id="modeBack" type="button">Use my own photo instead</button>
             <button class="chip-btn" id="saveBtn" type="button">Save look</button>
           </div>
           <p class="studio__note" id="stageNote"></p>
         </div>
 
         <div class="studio__panel">
+
+          <div class="panel-block" id="avatarBlock">
+            <div class="panel-head">
+              <h2>Your measurements</h2>
+              <span class="panel-head__hint">In centimetres</span>
+            </div>
+
+            <label class="slider slider--measure">
+              <span class="slider__label">Height <b id="v_height">162 cm</b></span>
+              <input type="range" id="m_height" min="145" max="185" value="162" step="1">
+            </label>
+            <label class="slider slider--measure">
+              <span class="slider__label">Bust <b id="v_bust">88 cm</b></span>
+              <input type="range" id="m_bust" min="76" max="112" value="88" step="1">
+            </label>
+            <label class="slider slider--measure">
+              <span class="slider__label">Waist <b id="v_waist">69 cm</b></span>
+              <input type="range" id="m_waist" min="56" max="98" value="69" step="1">
+            </label>
+            <label class="slider slider--measure">
+              <span class="slider__label">Hip <b id="v_hip">94 cm</b></span>
+              <input type="range" id="m_hip" min="80" max="122" value="94" step="1">
+            </label>
+
+            <div class="size-out" id="sizeOut"></div>
+
+            <div class="tone-row" id="toneRow" role="group" aria-label="Skin tone">
+              <button class="tone-dot" data-tone="porcelain" style="--t:#F2D9C4" aria-label="Porcelain" type="button"></button>
+              <button class="tone-dot is-active" data-tone="warm" style="--t:#E3B792" aria-label="Warm" type="button"></button>
+              <button class="tone-dot" data-tone="tan" style="--t:#C99368" aria-label="Tan" type="button"></button>
+              <button class="tone-dot" data-tone="deep" style="--t:#8E5C3C" aria-label="Deep" type="button"></button>
+            </div>
+          </div>
 
           <div class="panel-block">
             <div class="panel-head">
@@ -172,8 +204,10 @@
             <div class="look-summary" id="lookSummary"></div>
             <a href="index.html#waitlist" class="btn btn--dark btn--full">Join the waitlist for this look</a>
             <p class="panel-fine">
-              Try-on is a styling preview, not a fit guarantee — it shows colour
-              and cut, not exact sizing. Sizes run XS–XL, graded for Asian fit.
+              Sizes and lengths come from our production spec, so a piece sits
+              where it really would on your frame. It's a styling preview
+              though — fabric behaves differently on every body. XS–XL, graded
+              for Asian fit.
             </p>
           </div>
 

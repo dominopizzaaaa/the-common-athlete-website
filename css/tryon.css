@@ -54,6 +54,18 @@
 }
 .uploader__hint { font-size: 0.9rem; color: var(--ink-soft); margin-bottom: 1.5rem; }
 
+.btn--hero { font-size: 0.86rem; padding: 1.2rem 2.6rem; }
+
+.uploader--alt {
+  margin-top: 2.4rem;
+  padding: 1.6rem 1.2rem;
+  border-style: solid;
+  border-color: var(--line);
+  background: transparent;
+}
+.uploader--alt .uploader__title { font-size: 1.15rem; margin-bottom: 0.25rem; }
+.uploader--alt .uploader__hint { margin-bottom: 1rem; }
+
 /* tips */
 .fit-tips {
   display: grid;
@@ -323,6 +335,64 @@
   cursor: pointer;
 }
 
+/* measurement sliders */
+.slider--measure .slider__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.slider--measure .slider__label b {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--espresso);
+}
+
+.size-out {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 1.4rem;
+  padding: 0.95rem 1.1rem;
+  border-radius: 11px;
+  background: rgba(207, 185, 154, 0.24);
+  border: 1px solid rgba(207, 185, 154, 0.5);
+}
+.size-out strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.25rem;
+  color: var(--espresso);
+}
+.size-out span {
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* skin tone */
+.tone-row { display: flex; gap: 0.55rem; margin-top: 1.2rem; }
+.tone-dot {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--t);
+  border: 1px solid rgba(46, 33, 26, 0.2);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.tone-dot:hover { transform: scale(1.1); }
+.tone-dot.is-active {
+  box-shadow: 0 0 0 2px #FBF8F2, 0 0 0 3.5px var(--espresso);
+}
+
+/* avatar canvas sits on a soft studio backdrop */
+.studio__canvas-wrap.is-avatar {
+  background: radial-gradient(ellipse at 50% 34%, #FBF6EC 0%, #EDE2D0 62%, #E2D4BF 100%);
+}
+.studio__canvas-wrap.is-avatar canvas { max-height: 74vh; }
+
 /* look summary */
 .panel-block--summary { background: var(--espresso); border-color: var(--espresso); }
 .look-summary { margin-bottom: 1.2rem; color: rgba(239, 231, 217, 0.75); }
@@ -338,6 +408,11 @@
   justify-content: space-between;
   gap: 1rem;
   font-size: 0.86rem;
+}
+.look-summary li em {
+  font-style: normal;
+  color: var(--sand);
+  font-weight: 600;
 }
 .look-summary__total {
   display: flex;

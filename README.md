@@ -23,31 +23,47 @@ Graded for Asian fit.
 
 ## The Fitting Room (virtual try-on)
 
-`tryon.html` lets a visitor upload a photo and see every piece on themselves.
+`tryon.html`. **Everything runs in the browser** — measurements and any photo
+stay on the device, never uploaded or stored. No generative AI is involved; the
+real product cut-outs are placed geometrically.
 
-**It runs entirely in the browser.** The photo is decoded, fitted and discarded
-on the device — never uploaded, never stored, nothing sent to a server. The pose
-model and its runtime are vendored in `vendor/` and `assets/models/` rather than
-loaded from a CDN, so no third party is contacted while a photo is on screen.
+### Avatar mode (default)
 
-How it works — no generative AI, the same approach as an eyewear try-on:
+A figure is generated from the visitor's height, bust, waist and hip
+(`js/avatar.js`), so every anatomical station — shoulder, underbust, waist,
+crotch — is known exactly rather than estimated. Garments are then placed
+against those stations:
 
-1. A pose model returns 33 body landmarks for the photo.
-2. Each garment cut-out is placed with a transform anchored to a **pair** of
-   landmarks — shoulders for tops, hips for shorts, ears for the headband — so
-   position, rotation and scale all follow the body automatically.
-3. Garments are fitted on **both axes**: width from the anchor pair, height from
-   torso length. Flat product renders are proportionally taller than the span a
-   garment actually covers on a body (straps and waistbands are laid out at full
-   length rather than curving over the shoulder or hip), so a uniform scale
-   leaves bands and hems sitting low.
+- **Widths** come from the body, because these fabrics stretch to fit.
+- **Lengths** come from the graded spec pack, in real centimetres. This is why
+  the same size reads shorter on a taller body — the inseam only grades 0.5cm
+  per size while a torso can be far longer.
+- **Size** is recommended from the spec pack's body chart: tops follow the bust,
+  bottoms follow whichever of waist/hip needs more room, so a split
+  recommendation (`S top · XL bottom`) is a normal result, not a bug.
 
-Placement constants in `js/tryon.js` are calibrated against a reference figure
-with known anthropometry; every anchor point lands within ~3px (0.4cm) of its
-anatomical target. If you re-cut the garment artwork, re-run that calibration.
+Body proportions use standard female anthropometry as fractions of height, with
+the head sized sub-linearly so it stays believable at 145cm and 185cm alike.
+Front-view width is derived from a circumference by modelling the torso as an
+ellipse of depth ≈0.72 × width, giving perimeter ≈ 2.72 × width.
 
-Graceful degradation: shorts are locked when the hips aren't visible, side-on
-photos are flagged, and the GPU delegate falls back to CPU.
+### Photo mode
+
+The same collection fitted to an uploaded photo. A pose model returns 33
+landmarks, and each cut-out is anchored to a **pair** of them — shoulders for
+tops, hips for shorts, ears for the headband — so position, rotation and scale
+follow the body. Garments fit on both axes: width from the anchor pair, height
+from torso length, because flat product renders are proportionally taller than
+the span a garment covers on a body.
+
+Those constants are calibrated against a reference figure with known
+anthropometry; every anchor lands within ~3px (0.4cm) of its anatomical target.
+Re-run that calibration if the garment artwork is re-cut.
+
+Graceful degradation: shorts lock when the hips aren't visible, side-on photos
+are flagged, and the GPU delegate falls back to CPU. The pose runtime and model
+are vendored in `vendor/` and `assets/models/` rather than loaded from a CDN, so
+no third party is contacted while a photo is on screen.
 
 ## Tech
 
@@ -59,7 +75,8 @@ Hand-built static site — no frameworks, no build step.
 - `css/tryon.css` — fitting-room styles
 - `js/main.js` — scroll reveals, colourway swapping, waitlist form
 - `js/nav.js` — shared navigation
-- `js/tryon.js` — try-on engine
+- `js/tryon.js` — fitting-room orchestration, both modes
+- `js/avatar.js` — parametric body, size chart, garment placement
 - `assets/garments/` — garment cut-outs, 5 styles × 3 colourways
 - `vendor/`, `assets/models/` — vendored pose runtime and model (~15 MB, loaded
   lazily only when someone opens the fitting room)
