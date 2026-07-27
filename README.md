@@ -10,23 +10,59 @@ more than S$48.
 
 ## The debut collection
 
-| Style | Piece | Price |
+| Piece | Price | Sizes |
 |---|---|---|
-| TCA-BR01 | Featherweight Cross-Back Bralette | S$34 |
-| TCA-SH02 | Sculpt V-Waist Short | S$40 |
-| TCA-TP01 | Studio Square-Neck Longline Crop | S$42 |
-| TCA-SH01 | Tempo 2-in-1 Running Short | S$48 |
+| Featherweight Cross-Back Bralette | S$34 | XS–XL |
+| Sculpt V-Waist Short | S$40 | XS–XL |
+| Studio Halter Longline Crop | S$42 | XS–XL |
+| Tempo 2-in-1 Running Short | S$48 | XS–XL |
+| Studio Headband | S$14 | One size |
 
 Colourways: **Black · Sand · Espresso** — colour-matched across every style.
-Sizes XS–XL, graded for Asian fit.
+Graded for Asian fit.
+
+## The Fitting Room (virtual try-on)
+
+`tryon.html` lets a visitor upload a photo and see every piece on themselves.
+
+**It runs entirely in the browser.** The photo is decoded, fitted and discarded
+on the device — never uploaded, never stored, nothing sent to a server. The pose
+model and its runtime are vendored in `vendor/` and `assets/models/` rather than
+loaded from a CDN, so no third party is contacted while a photo is on screen.
+
+How it works — no generative AI, the same approach as an eyewear try-on:
+
+1. A pose model returns 33 body landmarks for the photo.
+2. Each garment cut-out is placed with a transform anchored to a **pair** of
+   landmarks — shoulders for tops, hips for shorts, ears for the headband — so
+   position, rotation and scale all follow the body automatically.
+3. Garments are fitted on **both axes**: width from the anchor pair, height from
+   torso length. Flat product renders are proportionally taller than the span a
+   garment actually covers on a body (straps and waistbands are laid out at full
+   length rather than curving over the shoulder or hip), so a uniform scale
+   leaves bands and hems sitting low.
+
+Placement constants in `js/tryon.js` are calibrated against a reference figure
+with known anthropometry; every anchor point lands within ~3px (0.4cm) of its
+anatomical target. If you re-cut the garment artwork, re-run that calibration.
+
+Graceful degradation: shorts are locked when the hips aren't visible, side-on
+photos are flagged, and the GPU delegate falls back to CPU.
 
 ## Tech
 
 Hand-built static site — no frameworks, no build step.
 
-- `index.html` — single-page site
-- `css/style.css` — design system (quiet-luxury palette drawn from the collection colourways)
-- `js/main.js` — scroll reveals, colourway swapping, mobile nav, waitlist form
+- `index.html` — the main single-page site
+- `tryon.html` — the virtual try-on
+- `css/style.css` — design system (quiet-luxury palette from the colourways)
+- `css/tryon.css` — fitting-room styles
+- `js/main.js` — scroll reveals, colourway swapping, waitlist form
+- `js/nav.js` — shared navigation
+- `js/tryon.js` — try-on engine
+- `assets/garments/` — garment cut-outs, 5 styles × 3 colourways
+- `vendor/`, `assets/models/` — vendored pose runtime and model (~15 MB, loaded
+  lazily only when someone opens the fitting room)
 
 ## Deployment
 
