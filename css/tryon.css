@@ -130,6 +130,9 @@
   align-items: start;
 }
 
+/* grid children must be allowed to shrink below the canvas's intrinsic width */
+.studio__stage, .studio__panel { min-width: 0; }
+
 .studio__canvas-wrap {
   position: relative;
   border-radius: 16px;
@@ -140,10 +143,10 @@
 }
 .studio__canvas-wrap canvas {
   display: block;
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
   max-height: 72vh;
-  object-fit: contain;
   margin-inline: auto;
 }
 
@@ -176,7 +179,7 @@
 }
 
 /* panel */
-.studio__panel { display: grid; gap: 1.6rem; }
+.studio__panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
 
 .panel-block {
   background: #FBF8F2;
@@ -347,7 +350,14 @@
 }
 .look-summary__empty { font-size: 0.88rem; font-style: italic; }
 
-.btn--full { display: block; width: 100%; text-align: center; }
+/* full-width CTA must be allowed to wrap — .btn is nowrap by default, which
+   would otherwise force the whole panel wider than the viewport */
+.btn--full {
+  display: block;
+  width: 100%;
+  text-align: center;
+  white-space: normal;
+}
 .panel-fine {
   margin-top: 1rem;
   font-size: 0.72rem;
@@ -361,7 +371,7 @@
 
 /* ------------------------------------------------------- responsive --- */
 @media (max-width: 900px) {
-  .studio__grid { grid-template-columns: 1fr; }
+  .studio__grid { grid-template-columns: minmax(0, 1fr); }
   .studio__canvas-wrap canvas { max-height: 58vh; }
   .studio__panel { gap: 1.1rem; }
 }
