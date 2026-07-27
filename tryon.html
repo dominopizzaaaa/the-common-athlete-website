@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Fitting Room — Virtual Try-On · The Common Athlete</title>
+  <meta name="description" content="Try The Common Athlete on, from wherever you are. Upload a photo and see every style and colourway on you — entirely on your device, never uploaded.">
+  <meta property="og:title" content="The Fitting Room — The Common Athlete">
+  <meta property="og:description" content="See every style and colourway on you. Runs entirely on your device.">
+  <meta property="og:image" content="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/tryon.css">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+</head>
+<body class="page-tryon">
+
+  <header class="nav" id="nav">
+    <nav class="nav__inner container">
+      <a href="index.html" class="nav__brand" aria-label="The Common Athlete — home">
+        <img src="assets/logo.png" alt="" class="nav__brand-logo" width="36" height="36">
+        <span class="nav__brand-mark">the</span>
+        <span class="nav__brand-name">Common&nbsp;Athlete</span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="index.html#collection">Collection</a></li>
+        <li><a href="index.html#philosophy">Philosophy</a></li>
+        <li><a href="index.html#craft">Craft</a></li>
+      </ul>
+      <a href="index.html#waitlist" class="btn btn--small">Join the waitlist</a>
+      <button class="nav__toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span>
+      </button>
+    </nav>
+    <div class="nav__mobile" id="navMobile">
+      <a href="index.html#collection">Collection</a>
+      <a href="index.html#philosophy">Philosophy</a>
+      <a href="index.html#craft">Craft</a>
+      <a href="index.html#waitlist" class="nav__mobile-cta">Join the waitlist</a>
+    </div>
+  </header>
+
+  <main class="fitting">
+
+    <!-- ============ INTRO / UPLOAD ============ -->
+    <section class="fit-intro" id="stageIntro">
+      <div class="container fit-intro__inner">
+        <p class="eyebrow">The Fitting Room</p>
+        <h1 class="fit-intro__title">See it on <em>you</em></h1>
+        <p class="fit-intro__lede">
+          Upload a photo and try on all five styles in every colourway.
+          Your photo never leaves your phone — everything runs right here
+          in your browser, and nothing is uploaded, stored or sent anywhere.
+        </p>
+
+        <div class="uploader" id="dropZone">
+          <input type="file" id="fileInput" accept="image/*" hidden>
+          <div class="uploader__inner">
+            <div class="uploader__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
+                <path d="M24 33V13m0 0-8 8m8-8 8 8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8 30v4a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="uploader__title">Add a photo of yourself</p>
+            <p class="uploader__hint">Tap to choose from your camera roll, or take a new one</p>
+            <button class="btn btn--dark" id="chooseBtn" type="button">Choose a photo</button>
+          </div>
+        </div>
+
+        <ul class="fit-tips">
+          <li><span>01</span> Stand facing the camera, arms relaxed by your sides</li>
+          <li><span>02</span> Full body or waist-up both work — just keep shoulders visible</li>
+          <li><span>03</span> Good, even light and a plain background give the cleanest result</li>
+        </ul>
+
+        <p class="fit-privacy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M12 3l7 3v5.5c0 4.2-2.9 8.1-7 9.5-4.1-1.4-7-5.3-7-9.5V6l7-3z" stroke-linejoin="round"/>
+          </svg>
+          <span><strong>100% private.</strong> Processed entirely on your device — no upload, no server, no storage. Close the tab and it's gone.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ LOADING ============ -->
+    <section class="fit-loading" id="stageLoading" hidden>
+      <div class="container fit-loading__inner">
+        <div class="fit-spinner" aria-hidden="true"><span></span><span></span><span></span></div>
+        <p class="fit-loading__msg" id="loadingMsg">Reading your photo…</p>
+        <p class="fit-loading__sub">First time takes a few seconds while the fitting engine loads. After that it's instant.</p>
+      </div>
+    </section>
+
+    <!-- ============ ERROR ============ -->
+    <section class="fit-error" id="stageError" hidden>
+      <div class="container fit-error__inner">
+        <h2 id="errorTitle">We couldn't quite see you</h2>
+        <p id="errorMsg">Try a photo where you're facing the camera with your shoulders visible.</p>
+        <div class="fit-error__actions">
+          <button class="btn btn--dark" id="retryBtn" type="button">Try another photo</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STUDIO ============ -->
+    <section class="studio" id="stageStudio" hidden>
+      <div class="studio__grid container">
+
+        <div class="studio__stage">
+          <div class="studio__canvas-wrap" id="canvasWrap">
+            <canvas id="stage"></canvas>
+          </div>
+          <div class="studio__stage-actions">
+            <button class="chip-btn" id="changePhotoBtn" type="button">Change photo</button>
+            <button class="chip-btn" id="saveBtn" type="button">Save look</button>
+          </div>
+          <p class="studio__note" id="stageNote"></p>
+        </div>
+
+        <div class="studio__panel">
+
+          <div class="panel-block">
+            <div class="panel-head">
+              <h2>Colourway</h2>
+              <span class="panel-head__hint">Applies to your whole look</span>
+            </div>
+            <div class="colour-row" id="colourRow" role="group" aria-label="Colourway">
+              <button class="colour-pill is-active" data-colour="black" type="button">
+                <span class="colour-pill__dot swatch--black"></span> Black
+              </button>
+              <button class="colour-pill" data-colour="sand" type="button">
+                <span class="colour-pill__dot swatch--sand"></span> Sand
+              </button>
+              <button class="colour-pill" data-colour="espresso" type="button">
+                <span class="colour-pill__dot swatch--espresso"></span> Espresso
+              </button>
+            </div>
+          </div>
+
+          <div class="panel-block">
+            <div class="panel-head">
+              <h2>The pieces</h2>
+              <span class="panel-head__hint">Tap to wear · tap again to remove</span>
+            </div>
+            <div class="tray" id="tray"></div>
+          </div>
+
+          <div class="panel-block" id="adjustBlock" hidden>
+            <div class="panel-head">
+              <h2>Adjust <em id="adjustTarget">fit</em></h2>
+              <button class="link-btn" id="resetAdjust" type="button">Reset</button>
+            </div>
+            <label class="slider">
+              <span class="slider__label">Size</span>
+              <input type="range" id="scaleRange" min="60" max="150" value="100" step="1">
+            </label>
+            <label class="slider">
+              <span class="slider__label">Height</span>
+              <input type="range" id="offsetRange" min="-40" max="40" value="0" step="1">
+            </label>
+            <label class="slider">
+              <span class="slider__label">Across</span>
+              <input type="range" id="shiftRange" min="-40" max="40" value="0" step="1">
+            </label>
+          </div>
+
+          <div class="panel-block panel-block--summary">
+            <div class="look-summary" id="lookSummary"></div>
+            <a href="index.html#waitlist" class="btn btn--dark btn--full">Join the waitlist for this look</a>
+            <p class="panel-fine">
+              Try-on is a styling preview, not a fit guarantee — it shows colour
+              and cut, not exact sizing. Sizes run XS–XL, graded for Asian fit.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer footer--slim">
+    <div class="container">
+      <div class="footer__bottom">
+        <span>© 2026 The Common Athlete · Singapore</span>
+        <span>Every body is an athlete's body.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/nav.js"></script>
+  <script type="module" src="js/tryon.js"></script>
+</body>
+</html>

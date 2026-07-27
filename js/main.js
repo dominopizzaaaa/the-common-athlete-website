@@ -45,15 +45,23 @@
 
   /* ---------- product colourway swap ---------- */
   const tones = {
-    black:    { fill: "#1C1917", detail: "#F6F1E8", bg: "linear-gradient(160deg, #F3EDE1, #E9DFCE)" },
-    sand:     { fill: "#CDB59A", detail: "#8A7358", bg: "linear-gradient(160deg, #F6F0E5, #EFE3CF)" },
-    espresso: { fill: "#4A342A", detail: "#D9C7B2", bg: "linear-gradient(160deg, #F1EAE0, #E4D8C8)" },
+    black:    { label: "Black",    bg: "linear-gradient(160deg, #F3EDE1, #E9DFCE)" },
+    sand:     { label: "Sand",     bg: "linear-gradient(160deg, #F6F0E5, #EFE3CF)" },
+    espresso: { label: "Espresso", bg: "linear-gradient(160deg, #F1EAE0, #E4D8C8)" },
   };
 
   document.querySelectorAll("[data-product]").forEach((card) => {
     const media = card.querySelector("[data-media]");
-    const svg = card.querySelector(".garment");
+    const shot = card.querySelector("[data-shot]");
+    const style = card.dataset.style;
     const swatches = card.querySelectorAll("[data-swatches] .swatch");
+    if (!shot || !style) return;
+
+    // warm the other colourways so swapping doesn't flash
+    Object.keys(tones).forEach((t) => {
+      const pre = new Image();
+      pre.src = `assets/garments/${style}-${t}.png`;
+    });
 
     swatches.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -61,8 +69,8 @@
         if (!tone) return;
         swatches.forEach((b) => b.classList.remove("is-active"));
         btn.classList.add("is-active");
-        svg.querySelectorAll(".g-fill, .g-liner").forEach((p) => (p.style.fill = tone.fill));
-        svg.querySelectorAll(".g-detail").forEach((p) => (p.style.stroke = tone.detail));
+        shot.src = `assets/garments/${style}-${btn.dataset.tone}.png`;
+        shot.alt = shot.alt.replace(/ in .*$/, ` in ${tone.label}`);
         media.style.background = tone.bg;
       });
     });

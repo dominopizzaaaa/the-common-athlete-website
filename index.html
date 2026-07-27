@@ -33,9 +33,9 @@
       </a>
       <ul class="nav__links">
         <li><a href="#collection">Collection</a></li>
+        <li><a href="tryon.html" class="nav__links-feature">Try on</a></li>
         <li><a href="#philosophy">Philosophy</a></li>
         <li><a href="#craft">Craft</a></li>
-        <li><a href="#singapore">Singapore</a></li>
       </ul>
       <a href="#waitlist" class="btn btn--small">Join the waitlist</a>
       <button class="nav__toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
@@ -44,6 +44,7 @@
     </nav>
     <div class="nav__mobile" id="navMobile">
       <a href="#collection">Collection</a>
+      <a href="tryon.html">Try on</a>
       <a href="#philosophy">Philosophy</a>
       <a href="#craft">Craft</a>
       <a href="#singapore">Singapore</a>
@@ -68,8 +69,8 @@
             Nothing in our debut collection costs more than S$48.
           </p>
           <div class="hero__actions reveal">
-            <a href="#collection" class="btn btn--dark">Explore the collection</a>
-            <a href="#philosophy" class="btn btn--ghost">Our philosophy</a>
+            <a href="tryon.html" class="btn btn--dark">Try it on — free</a>
+            <a href="#collection" class="btn btn--ghost">Explore the collection</a>
           </div>
           <div class="hero__colways reveal">
             <span class="hero__colways-label">Three colourways</span>
@@ -81,22 +82,11 @@
         </div>
         <div class="hero__visual reveal-late" aria-hidden="true">
           <div class="hero__card hero__card--a">
-            <svg viewBox="20 30 160 160" class="garment" data-tone="sand">
-              <path class="g-liner" d="M63 137 L89 141 L87 164 Q75 171 62 163 Z"/>
-              <path class="g-liner" d="M137 137 L111 141 L113 164 Q125 171 138 163 Z"/>
-              <path class="g-fill" d="M56 74 Q100 67 144 74 C150 96 152 112 154 134 L116 140 Q108 120 100 120 Q92 120 84 140 L46 134 C48 112 50 96 56 74 Z"/>
-              <path class="g-detail" d="M58 81 Q100 74 142 81" fill="none"/>
-            </svg>
+            <img src="assets/garments/tempo-short-sand.png" alt="" class="hero__card-shot">
             <span class="hero__card-label">Tempo Short</span>
           </div>
           <div class="hero__card hero__card--b">
-            <svg viewBox="20 30 160 160" class="garment" data-tone="espresso">
-              <path class="g-fill" d="M74 90 L66 42 L70 41 L79 89 Z"/>
-              <path class="g-fill" d="M126 90 L134 42 L130 41 L121 89 Z"/>
-              <path class="g-fill" d="M70 92 L78 88 Q100 108 122 88 L130 92 C136 104 140 120 140 141 L60 141 C60 120 64 104 70 92 Z"/>
-              <rect class="g-fill" x="58" y="141" width="84" height="11" rx="2"/>
-              <path class="g-detail" d="M60 141 L140 141" fill="none"/>
-            </svg>
+            <img src="assets/garments/cross-back-bra-espresso.png" alt="" class="hero__card-shot">
             <span class="hero__card-label">Cross-Back Bralette</span>
           </div>
           <div class="hero__ticket">
@@ -185,27 +175,17 @@
 
         <div class="collection__grid">
 
-          <!-- Style 02 — Bralette -->
-          <article class="product reveal" data-product>
+          <article class="product reveal" data-product data-style="cross-back-bra">
             <div class="product__media" data-media>
               <span class="product__tag">Light support</span>
-              <svg viewBox="10 24 180 172" class="garment">
-                <path class="g-fill" d="M74 90 L66 42 L70 41 L79 89 Z"/>
-                <path class="g-fill" d="M126 90 L134 42 L130 41 L121 89 Z"/>
-                <path class="g-fill" d="M70 92 L78 88 Q100 108 122 88 L130 92 C136 104 140 120 140 141 L60 141 C60 120 64 104 70 92 Z"/>
-                <rect class="g-fill" x="58" y="141" width="84" height="11" rx="2"/>
-                <path class="g-detail" d="M60 141 L140 141" fill="none"/>
-              </svg>
+              <img class="product__shot" data-shot src="assets/garments/cross-back-bra-black.png" alt="Featherweight Cross-Back Bralette in Black" loading="lazy" decoding="async">
             </div>
             <div class="product__info">
               <div class="product__row">
                 <h3>Featherweight Cross-Back Bralette</h3>
                 <span class="product__price">S$34</span>
               </div>
-              <p class="product__desc">
-                Barely-there straps crossing at the back, buttery 260gsm knit,
-                removable pads. For yoga, Pilates and everything in between.
-              </p>
+              <p class="product__desc">Barely-there straps crossing at the back, buttery 260gsm knit, removable pads. For yoga, Pilates and everything in between.</p>
               <div class="product__meta">
                 <div class="product__swatches" data-swatches>
                   <button class="swatch swatch--black is-active" data-tone="black" aria-label="Black"></button>
@@ -217,25 +197,17 @@
             </div>
           </article>
 
-          <!-- Style 04 — Crop -->
-          <article class="product reveal" data-product>
+          <article class="product reveal" data-product data-style="halter">
             <div class="product__media" data-media>
               <span class="product__tag">Studio staple</span>
-              <svg viewBox="10 24 180 172" class="garment">
-                <path class="g-fill" d="M66 40 L80 40 L80 72 L120 72 L120 40 L134 40 C141 58 143 76 143 96 L142 172 Q100 182 58 172 L57 96 C57 76 59 58 66 40 Z"/>
-                <path class="g-detail" d="M59 160 Q100 170 141 160" fill="none"/>
-              </svg>
+              <img class="product__shot" data-shot src="assets/garments/halter-black.png" alt="Studio Halter Longline Crop in Black" loading="lazy" decoding="async">
             </div>
             <div class="product__info">
               <div class="product__row">
-                <h3>Studio Square-Neck Longline Crop</h3>
+                <h3>Studio Halter Longline Crop</h3>
                 <span class="product__price">S$42</span>
               </div>
-              <p class="product__desc">
-                A clean square neck, built-in shelf support and a wide,
-                stay-put hem band that sits right at the waist. Bonded edges,
-                zero bulk.
-              </p>
+              <p class="product__desc">A clean halter neck, built-in shelf support and a wide, stay-put hem band that sits right at the waist. Bonded edges, zero bulk.</p>
               <div class="product__meta">
                 <div class="product__swatches" data-swatches>
                   <button class="swatch swatch--black is-active" data-tone="black" aria-label="Black"></button>
@@ -247,25 +219,17 @@
             </div>
           </article>
 
-          <!-- Style 03 — Sculpt short -->
-          <article class="product reveal" data-product>
+          <article class="product reveal" data-product data-style="sculpt-short">
             <div class="product__media" data-media>
               <span class="product__tag">Squat-proof</span>
-              <svg viewBox="10 24 180 172" class="garment">
-                <path class="g-fill" d="M58 70 Q100 63 142 70 C149 94 152 118 152 146 L112 152 Q106 128 100 128 Q94 128 88 152 L48 146 C48 118 51 94 58 70 Z"/>
-                <path class="g-detail" d="M64 76 L100 98 L136 76" fill="none"/>
-              </svg>
+              <img class="product__shot" data-shot src="assets/garments/sculpt-short-black.png" alt="Sculpt V-Waist Short in Black" loading="lazy" decoding="async">
             </div>
             <div class="product__info">
               <div class="product__row">
                 <h3>Sculpt V-Waist Short</h3>
                 <span class="product__price">S$40</span>
               </div>
-              <p class="product__desc">
-                High-rise crossover V-waist that never rolls, second-skin
-                compression, curved side pockets. Squat-proof — we test every
-                batch.
-              </p>
+              <p class="product__desc">High-rise crossover V-waist that never rolls, second-skin compression, curved side pockets. Squat-proof — we test every batch.</p>
               <div class="product__meta">
                 <div class="product__swatches" data-swatches>
                   <button class="swatch swatch--black is-active" data-tone="black" aria-label="Black"></button>
@@ -277,26 +241,17 @@
             </div>
           </article>
 
-          <!-- Style 01 — Tempo short -->
-          <article class="product reveal" data-product>
+          <article class="product reveal" data-product data-style="tempo-short">
             <div class="product__media" data-media>
               <span class="product__tag">Run ready</span>
-              <svg viewBox="10 24 180 172" class="garment">
-                <path class="g-liner" d="M63 137 L89 141 L87 164 Q75 171 62 163 Z"/>
-                <path class="g-liner" d="M137 137 L111 141 L113 164 Q125 171 138 163 Z"/>
-                <path class="g-fill" d="M56 74 Q100 67 144 74 C150 96 152 112 154 134 L116 140 Q108 120 100 120 Q92 120 84 140 L46 134 C48 112 50 96 56 74 Z"/>
-                <path class="g-detail" d="M58 81 Q100 74 142 81" fill="none"/>
-              </svg>
+              <img class="product__shot" data-shot src="assets/garments/tempo-short-black.png" alt="Tempo 2-in-1 Running Short in Black" loading="lazy" decoding="async">
             </div>
             <div class="product__info">
               <div class="product__row">
                 <h3>Tempo 2-in-1 Running Short</h3>
                 <span class="product__price">S$48</span>
               </div>
-              <p class="product__desc">
-                A flowy outer layer over a no-ride compression liner, with a
-                zip pocket at the back and a phone pocket you'll actually use.
-              </p>
+              <p class="product__desc">A flowy outer layer over a no-ride compression liner, with a zip pocket at the back and a phone pocket you'll actually use.</p>
               <div class="product__meta">
                 <div class="product__swatches" data-swatches>
                   <button class="swatch swatch--black is-active" data-tone="black" aria-label="Black"></button>
@@ -304,6 +259,28 @@
                   <button class="swatch swatch--espresso" data-tone="espresso" aria-label="Espresso"></button>
                 </div>
                 <span class="product__sizes">XS – XL</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="product reveal" data-product data-style="headband">
+            <div class="product__media" data-media>
+              <span class="product__tag">Finishing touch</span>
+              <img class="product__shot" data-shot src="assets/garments/headband-black.png" alt="Studio Headband in Black" loading="lazy" decoding="async">
+            </div>
+            <div class="product__info">
+              <div class="product__row">
+                <h3>Studio Headband</h3>
+                <span class="product__price">S$14</span>
+              </div>
+              <p class="product__desc">The same buttery fabric, cut into a no-slip band that holds through every burpee. The quiet detail that pulls a set together.</p>
+              <div class="product__meta">
+                <div class="product__swatches" data-swatches>
+                  <button class="swatch swatch--black is-active" data-tone="black" aria-label="Black"></button>
+                  <button class="swatch swatch--sand" data-tone="sand" aria-label="Sand"></button>
+                  <button class="swatch swatch--espresso" data-tone="espresso" aria-label="Espresso"></button>
+                </div>
+                <span class="product__sizes">One size</span>
               </div>
             </div>
           </article>
@@ -311,8 +288,8 @@
         </div>
 
         <p class="collection__note reveal">
-          Photography from our first sample run is on its way —
-          <a href="#waitlist">join the waitlist</a> to see it first.
+          Want to see it on you? <a href="tryon.html">step into the fitting room</a>
+          — upload a photo and try the whole collection on, right in your browser.
         </p>
       </div>
     </section>
